@@ -1,0 +1,18 @@
+{
+  "name": "test_node",
+  "version": "1.0.0",
+  "description": "first course of node from people with examples and going directly to github repository.",
+  "main": "index.js",
+  "scripts": {
+    "test": "/test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "node_js_repo_b"
+  },
+  "keywords": [
+    "node"
+  ],
+  "author": "Eduardo",
+  "license": "ISC"
+}
