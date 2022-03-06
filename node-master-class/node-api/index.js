@@ -5,7 +5,7 @@ const url = require('url');
 const { Users } = require('./models/People.js');
 const StringDecoder = require('string_decoder').StringDecoder;
 const modeled_db = require('./models/People.js');
-
+const handlers = require('./lib/handlers');
 
 urlParser = (url) => {
     console.log();
@@ -74,45 +74,6 @@ const server = http.createServer((req, res)=>{
 server.listen(3000, ()=>{
     console.log("listening on port 3000");
 });
-
-
-const handlers = {};
-
-handlers.root = (data, callback) => {
-    callback(200, {index: 'my index page in json object'});
-};
-
-
-handlers.notFound = (data, callback) => {
-    callback(404, {message: 'not found - não encontrado'});
-};
-
-handlers.getAllUsers = (data, callback) => {
-    if (data.method === 'get')
-        callback(200, modeled_db);
-    else
-        callbacl(403, {})
-}
-
-handlers.getUser = (data, callback) => {
-    if (data.method === 'get'){
-        userId = null;
-        data.id = 1;
-        if ( typeof(data.id !== 'undefined') ? userId = data.id: null )
-        if (userId === null){
-            callback(204, {});
-            return;
-        }
-
-        for(let user of Users)
-            if (userId === user.id) {
-                callback(200, { user: user['user'] });
-                return;
-            }
-    }  
-    callback(400, {message : 'Wrong method - this method is not allowed'});
-    return;
-}
 
 
 const router = {
