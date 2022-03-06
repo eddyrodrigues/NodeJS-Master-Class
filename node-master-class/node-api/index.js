@@ -8,6 +8,8 @@ const modeled_db = require('./models/People.js');
 const handlers = require('./lib/handlers');
 const _data = require('./lib/data');
 
+
+
 const server = http.createServer((req, res)=>{
     // parsing url
     const parsedUrl = url.parse(req.url, true);
@@ -44,6 +46,8 @@ const server = http.createServer((req, res)=>{
             payload,
         };
 
+
+        
         // route selecting, if exists, the routed wich you be called (not found as default one)
         const route = typeof(router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
 

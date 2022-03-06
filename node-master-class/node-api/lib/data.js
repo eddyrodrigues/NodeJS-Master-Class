@@ -88,8 +88,11 @@ _data.delete = function(dir,file,callback){
 
 _data.read = function(dir,file,callback){
   let diseredPath = path.join(_data.baseDir, dir,`${file}.json`);
-  fs.readFile(diseredPath, 'utf8', function(err,data){
-    callback(err,data);
+  fs.readFile(diseredPath, 'utf8', function(err,dataFromFile){
+    if (err)
+      callback(err,{});
+    else
+      callback(err, dataFromFile);
   });
 };
 

@@ -1,5 +1,6 @@
 const _data = require("./data");
 const helpers = require('./helpers');
+const uuid = require('uuid');
 
 const handlers = {};
 
@@ -22,9 +23,9 @@ handlers.getAllUsers = (data, callback) => {
 handlers.getUser = (data, callback) => {
     
     if (data.method == 'get'){
-      console.log(data);
         var userId = null;
         typeof(data.queryObject.guid) !== 'undefined' ? userId = data.queryObject.guid : null;
+        
         
         if (userId === null){
             callback(204, {});
@@ -44,7 +45,7 @@ handlers.getUser = (data, callback) => {
           }
         })
     }else{
-      callback(400, {message : 'Wrong method - this method is not allowed1'});
+      callback(400, {message : 'this method is not allowed'});
     }
 }
 
@@ -73,7 +74,7 @@ handlers.postUser = (data, callback) =>{
   let username = typeof(pl.username) === 'string' && pl.username.lenght > 0 ? pl.username : '';
   let surname = typeof(pl.surname) === 'string' && pl.surname.lenght > 0 ? pl.surname : '';
   let age = (typeof(pl.age) === 'string' && pl.age.lenght > 0) || typeof(pl.age) === 'number' ? pl.age : 0;
-  
+  let GUID = uuid.v1(); 
 
   if ( phonenumber === '' || username === '' || surname === '' || age === 0){
     callback(400, {message: "object string is not in the right format"});
