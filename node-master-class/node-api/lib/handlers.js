@@ -1,3 +1,6 @@
+const _data = require("./data");
+const helpers = require('./helpers');
+
 const handlers = {};
 
 handlers.root = (data, callback) => {
@@ -17,23 +20,32 @@ handlers.getAllUsers = (data, callback) => {
 }
 
 handlers.getUser = (data, callback) => {
-    if (data.method === 'get'){
-        userId = null;
-        data.id = 1;
-        if ( typeof(data.id !== 'undefined') ? userId = data.id: null )
+    
+    if (data.method == 'get'){
+      console.log(data);
+        var userId = null;
+        typeof(data.queryObject.guid) !== 'undefined' ? userId = data.queryObject.guid : null;
+        
         if (userId === null){
             callback(204, {});
-            return;
         }
 
-        for(let user of Users)
-            if (userId === user.id) {
-                callback(200, { user: user['user'] });
-                return;
-            }
-    }  
-    callback(400, {message : 'Wrong method - this method is not allowed'});
-    return;
+        _data.read('users', userId, (err, data) =>{
+          if (!err){
+            helpers.parseJsonObject(data, (err, dataReturn) =>{
+              if (!err){
+                callback(200, dataReturn);
+              }else{
+                callback(204, {});
+              }
+            });
+          }else{
+            callback(204, {});
+          }
+        })
+    }else{
+      callback(400, {message : 'Wrong method - this method is not allowed1'});
+    }
 }
 
 
@@ -72,4 +84,4 @@ handlers.postUser = (data, callback) =>{
 
 }
 
-export default handlers;
+module.exports =  handlers;

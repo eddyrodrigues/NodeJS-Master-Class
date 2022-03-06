@@ -6,11 +6,7 @@ const { Users } = require('./models/People.js');
 const StringDecoder = require('string_decoder').StringDecoder;
 const modeled_db = require('./models/People.js');
 const handlers = require('./lib/handlers');
-
-urlParser = (url) => {
-    console.log();
-}
-
+const _data = require('./lib/data');
 
 const server = http.createServer((req, res)=>{
     // parsing url
@@ -43,7 +39,7 @@ const server = http.createServer((req, res)=>{
         // mounting the trimmed path
         const data = {
             path:trimmedPath,
-            'query-string': parsedQueryString,
+            'queryObject': parsedQueryString,
             method: reqMethod,
             payload,
         };
@@ -65,22 +61,15 @@ const server = http.createServer((req, res)=>{
     });
 })
 
-
-
-
-
-
-
 server.listen(3000, ()=>{
     console.log("listening on port 3000");
 });
-
 
 const router = {
     '/': handlers.root,
     '': handlers.root,
     'users': handlers.getAllUsers,
-    'user/1': handlers.getUser,
+    'user': handlers.getUser,
 };
 
 

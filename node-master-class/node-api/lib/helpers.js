@@ -4,7 +4,7 @@ const helpers = {}
 helpers.parseJsonObject = (json, cb) => {
   try{
     var objectParsed = JSON.parse(json);
-    cb(null,json);
+    cb(false,objectParsed);
   }
   catch(ex){
     cb(ex, {});
@@ -12,4 +12,4 @@ helpers.parseJsonObject = (json, cb) => {
 }
 
 
-export default helpers;
+module.exports = helpers;
