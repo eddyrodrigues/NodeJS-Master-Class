@@ -1,12 +1,7 @@
-const { statSync } = require('fs');
 const http = require('http');
-const { parse } = require('path');
 const url = require('url');
-const { Users } = require('./models/People.js');
 const StringDecoder = require('string_decoder').StringDecoder;
-const modeled_db = require('./models/People.js');
 const handlers = require('./lib/handlers');
-const _data = require('./lib/data');
 
 
 
@@ -74,6 +69,7 @@ const router = {
     '': handlers.root,
     'users': handlers.getAllUsers,
     'user': handlers.getUser,
+    'create-user': handlers.postUser
 };
 
 

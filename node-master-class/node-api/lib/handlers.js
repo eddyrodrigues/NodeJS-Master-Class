@@ -1,4 +1,4 @@
-const _data = require("./data");
+const _data = require("./data.js");
 const helpers = require('./helpers');
 const uuid = require('uuid');
 
@@ -63,25 +63,39 @@ handlers.postUser = (data, callback) =>{
 
   let pl = {}
   helpers.parseJsonObject(data.payload, (err, data) => {
-    if (!err && typef(data) === 'object'){
+    if (!err || typef(data) !== 'object'){
       pl = data;
     }else {
-      callback(500, {message: "unable to parse json"})
+      return callback(500, {message: "unable to parse json"})
     }
   }); 
 
-  let phonenumber = typeof(pl.phone) === 'string' && pl.phone.lenght > 0 ? pl.phone : '';
-  let username = typeof(pl.username) === 'string' && pl.username.lenght > 0 ? pl.username : '';
-  let surname = typeof(pl.surname) === 'string' && pl.surname.lenght > 0 ? pl.surname : '';
-  let age = (typeof(pl.age) === 'string' && pl.age.lenght > 0) || typeof(pl.age) === 'number' ? pl.age : 0;
-  let GUID = uuid.v1(); 
+  let phonenumber = (typeof(pl.phone) === 'string' && pl.phone.length > 0) || typeof(pl.age) === 'number' ? pl.phone : '';
+  let name = typeof(pl.name) === 'string' && pl.name.length > 0 ? pl.name : '';
+  let surname = typeof(pl.surname) === 'string' && pl.surname.length > 0 ? pl.surname : '';
+  let age = (typeof(pl.age) === 'string' && pl.age.length > 0) || typeof(pl.age) === 'number' ? pl.age : 0;
+  let guidUser = helpers.createUniqueId();
 
-  if ( phonenumber === '' || username === '' || surname === '' || age === 0){
-    callback(400, {message: "object string is not in the right format"});
+  if ( phonenumber === '' || name === '' || surname === '' || age === 0){
+    return callback(400, {message: "object string is not in the right format"});
   }
 
-  //  TODO: { Adjust this to continue and post the object to a file }
+  let userData = {
+    "name": name,
+    "surname": surname,
+    "phone": phonenumber,
+    "age": age,
+    "GUID": guidUser
+  };
 
+  //  TODO: { Adjust this to continue and post the object to a file }
+  _data.create('users', guidUser, userData,(err, data) => {
+    if (!err){
+      return callback(200, userData);
+    }else{
+      return callback(204,{});
+    }
+  });
 
 }
 

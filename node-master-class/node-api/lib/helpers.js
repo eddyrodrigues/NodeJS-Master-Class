@@ -1,3 +1,4 @@
+const uuid = require('uuid');
 const helpers = {}
 
 
@@ -11,5 +12,8 @@ helpers.parseJsonObject = (json, cb) => {
   }
 }
 
+helpers.createUniqueId = ()=>{
+  return uuid.v1();
+}
 
 module.exports = helpers;
