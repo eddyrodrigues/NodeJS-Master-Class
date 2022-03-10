@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { resolve } = require("path");
 const { type } = require("os");
+const { exit } = require("process");
 const fsPromises = require('fs').promises;
 
 const handlers = {};
@@ -24,7 +25,7 @@ handlers.notFound = (data, callback) => {
 
 
 handlers.users = (data, callback) => {
-  let acceptedValues = ['post', 'get', 'delete', 'update'];
+  let acceptedValues = ['post', 'get', 'delete', 'update', 'put'];
   if (acceptedValues.indexOf(data.method) > -1) {
     handlers._users[data.method](data, callback);
   }
@@ -37,44 +38,39 @@ handlers._users = {};
 handlers._users.get = (data, callback) => {
   var userId = null;
   const { guid } = data.queryObject;
-  typeof (guid) !== 'undefined' ? userId = guid: null;
-  console.log(guid);
+  userId = typeof (guid) !== 'undefined' ? guid : null;
+
   if (userId !== null) {
-    _data.read('users', userId, (err, data) => {
-      if (!err) {
-        helpers.parseJsonObject(data, (err, dataReturn) => {
-          if (!err) {
-            callback(200, dataReturn);
-          } else {
-            callback(204, {});
-          }
-        });
-      } else {
-        callback(204, {});
-      }
-    })
+    tokenProvided = typeof(data.headers.token) === 'undefined' ? null : data.headers.token;
+    if (tokenProvided) {
+      handlers._tokens.verify(tokenProvided, guid, (err) => {
+        console.log(err);
+        if (err) {
+          _data.read('users', userId, (err, data) => {
+            if (!err) {
+              if (data){
+                callback(200, data);
+              } else {
+                callback(204, {});
+              }
+            } else {
+              callback(204, {});
+            }
+          }); 
+        } else {
+          callback(401, {message: "this token is not valid or has been expired"});
+        }
+      });
+    } else {
+      callback(404, {message: "token not provided"});
+    }
   }else{
-    return callback(204, {});
+    callback(204, {});
   }
 
-}
+};
 
-
-
-handlers.postUser = (data, callback) => {
-  const allowedMethods = ['post'];
-  if (allowedMethods.indexOf(data.method) === -1) {
-    callback(400, {
-      message: 'this method is not allowed'
-    });
-    return;
-  }
-  if (!data.payload) {
-    callback(400, {
-      message: 'this method needs a body'
-    });
-    return;
-  }
+handlers._users.post = (data, callback) => {
 
   let pl = {}
   helpers.parseJsonObject(data.payload, (err, data) => {
@@ -116,7 +112,57 @@ handlers.postUser = (data, callback) => {
     }
   });
 
+};
+
+handlers._users.put = (data, callback) => {
+  let headers = data.headers;
+  let payload = helpers.parseJsonObjectReturn(data.payload);
+
+  let token = typeof(headers.token) === 'undefined' ? null : headers.token;
+  let guid = typeof(payload.GUID) === 'undefined' ? null : payload.GUID;
+  let phone = typeof(payload.phone) === 'undefined' ? null : payload.phone;
+  let name = typeof(payload.name) === 'undefined' ? null : payload.name;
+  let surname = typeof(payload.surname) === 'undefined' ? null : payload.surname;
+  let age = typeof(payload.age) === 'undefined' ? null : payload.age;
+  
+  if (token) {
+    handlers._tokens.verify(token, guid, (Noterr) => {
+      if (Noterr) {
+
+        _data.read('users', guid, (err, data) => {
+          if (!err){
+            
+            userData = data;
+            
+            userData.name    = userData.name != name ? name : userData.name;
+            userData.phone   = userData.phone != phone ? phone : userData.phone;
+            userData.surname = userData.surname != surname? surname : userData.surname;
+            userData.age     = userData.age != age ? age : userData.age;
+
+            _data.update('users', guid, userData, (err, data) => {
+              if (!err) {
+                callback(200, userData);
+              } else {
+                callback(500, {message: err});
+              }
+            });
+          } else {
+            callback(500, {message: "It was not possible to read the user info"});
+          }
+        
+        
+        });
+      } else {
+        callback(401, {message: "token is invalid"});
+      }
+    });
+  } else {
+    callback(401, {message: "token is invalid or not provided"});
+  }
+
 }
+
+
 
 
 handlers.tokens = (data, callback) => {
@@ -127,6 +173,7 @@ handlers.tokens = (data, callback) => {
     callback(405);
   }
 };
+
 handlers._tokens = {};
 
 handlers._tokens.get = (data, callback) =>{
@@ -145,7 +192,7 @@ handlers._tokens.get = (data, callback) =>{
     callback(400, {message: "Id dont exists or is invalid."})
   }
 
-}
+};
 
 handlers._tokens.post = (data, callback) =>{
  
@@ -158,7 +205,6 @@ handlers._tokens.post = (data, callback) =>{
     // lookup the user who matchs phone number
     _data.read('users', guid,  (err, userData) => {
       if (!err && userData){
-        userData = helpers.parseJsonObjectReturn(userData);
         if (userData.phone === phone){
           let random_token = helpers.createRandomString(20);
           let expiresIn = Date.now() + 1000 *60 * 60;
@@ -166,9 +212,11 @@ handlers._tokens.post = (data, callback) =>{
             "phone"   : phone,
             "id"      : random_token,
             "expires" : expiresIn
-          }
+          };
           _data.create('tokens', random_token, tokenObject, (err) => {
+            console.log(err);
             if (!err){
+              
               callback(200, tokenObject);
             }else{
               callback(500, {message: "could not create the token"});
@@ -185,7 +233,7 @@ handlers._tokens.post = (data, callback) =>{
     callback(400, {message: "error: missing fields"});
   }
   
-}
+};
 
 handlers._tokens.delete = (data, callback) =>{
   let { id } = helpers.parseJsonObjectReturn(data.payload);
@@ -211,7 +259,7 @@ handlers._tokens.delete = (data, callback) =>{
   } else {
     callback(400, {message: "the specified token does not exist"});
   }
-}
+};
 
 handlers._tokens.put = (data, callback) =>{
   let { id, extend } = helpers.parseJsonObjectReturn(data.payload);
@@ -239,9 +287,44 @@ handlers._tokens.put = (data, callback) =>{
   } else {
     callback(400, {message: "the specified token does not exist"});
   }
-}
+};
 
+handlers._tokens.verify = (tokenId, guid, callback) =>{
 
+  let token = tokenId;
+  let GUID = guid;
+  GUID = typeof(guid) === 'undefined' ? false : GUID;
+  token = typeof(token) === 'undefined' ? false : token;
+  
+  if (token){
+    console.log('aaa');
+    _data.read('tokens', token, (err, data) => {
+      if (!err) {
+        if (data.expires > Date.now()){
+          _data.read('users', GUID, (err, data) => {
+            if (!err) {
+              console.log
+              if (data.GUID == GUID){
+                callback(true);
+              } else {
+                callback(false);
+              }
+            } else {
+              callback(false);
+            }
+          })
+        } else {
+          callback(false);
+        }
+      } else {
+        callback(false);
+      }
+    });
+    
+  } else {
+    callback(false);
+  }
 
+};
 
 module.exports = handlers;

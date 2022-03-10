@@ -1,7 +1,7 @@
 const path = require('path');
 var fs = require('fs')
 const _data = {};
-var fsPromises = require('fs').promises;
+const helpers = require('./helpers');
 
 _data.baseDir = path.join(__dirname, "./../.data/");
 
@@ -37,7 +37,7 @@ _data.update = (dir, file, data, callback) => {
           fs.writeFile(fd, stringData, (err) =>{
             if (!err){
               fs.close(fd, (err) => {
-                if (!err) callback(false);
+                if (!err) callback(false, data);
                 else callback('could not close the file correctly');
               });
             }
@@ -68,7 +68,7 @@ _data.read = function(dir,file,callback){
     if (err)
       callback(err,{});
     else
-      callback(err, dataFromFile);
+      callback(err, helpers.parseJsonObjectReturn(dataFromFile));
   });
 };
 

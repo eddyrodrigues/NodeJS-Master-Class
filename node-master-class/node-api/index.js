@@ -40,6 +40,7 @@ const server = http.createServer((req, res)=>{
             'queryObject': parsedQueryString,
             method: reqMethod,
             payload,
+            headers: req.headers,
         };
 
 
