@@ -2,6 +2,7 @@ const http = require('http');
 const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
 const handlers = require('./lib/handlers');
+const helpers = require('./lib/helpers');
 
 
 
@@ -32,7 +33,7 @@ const server = http.createServer((req, res)=>{
     req.on('end', () =>{
         // payload end
         payload += decoder.end();
-        
+      
         // mounting the trimmed path
         const data = {
             path:trimmedPath,
@@ -50,11 +51,13 @@ const server = http.createServer((req, res)=>{
         route(data, (statusCode, payload) => {
             // res.writeHead(statusCode);
             res.statusCode = statusCode;
+            res.setHeader("Content-Type", "application/json");
             res.writeHead(statusCode, {
                 'Content-type': 'application/json',
                 //'enconding': 'utf-8',
             });
             payload = JSON.stringify(payload);
+            
             res.end(payload);
         });
     });
@@ -68,8 +71,9 @@ const router = {
     '/': handlers.root,
     '': handlers.root,
     'users': handlers.getAllUsers,
-    'user': handlers.getUser,
-    'create-user': handlers.postUser
+    'user': handlers.users,
+    'create-user': handlers.postUser,
+    'tokens': handlers.tokens
 };
 
 

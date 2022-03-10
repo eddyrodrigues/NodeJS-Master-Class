@@ -1,7 +1,7 @@
 const path = require('path');
 var fs = require('fs')
 const _data = {};
-
+var fsPromises = require('fs').promises;
 
 _data.baseDir = path.join(__dirname, "./../.data/");
 
@@ -59,31 +59,7 @@ _data.update = (dir, file, data, callback) => {
 _data.delete = function(dir,file,callback){
   let diseredPath = path.join(_data.baseDir, dir,`${file}.json`);
   // Open the file for writing
-  fs.unlink(diseredPath, 'r+', function(err, fileDescriptor){
-    if(!err && fileDescriptor){
-      // Convert data to string
-      var stringData = JSON.stringify(data);
-
-      // Write to file and close it
-      fs.writeFile(fileDescriptor, stringData,function(err){
-        if(!err){
-          fs.close(fileDescriptor,function(err){
-            if(!err){
-              callback(false);
-            } else {
-              callback('Error closing existing file');
-            }
-          });
-        } else {
-          callback('Error writing to existing file');
-        }
-      });
-    } else {
-      callback('Could not open file for updating, it may not exist yet');
-    }
-  });
-
-
+  fs.unlink(diseredPath, (err) => callback(err));
 };
 
 _data.read = function(dir,file,callback){
