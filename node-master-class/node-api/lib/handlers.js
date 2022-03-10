@@ -17,7 +17,7 @@ handlers.getAllUsers = (data, callback) => {
     if (data.method === 'get')
         callback(200, modeled_db);
     else
-        callbacl(403, {})
+        callback(403, {})
 }
 
 handlers.getUser = (data, callback) => {
@@ -98,5 +98,7 @@ handlers.postUser = (data, callback) =>{
   });
 
 }
+
+
 
 module.exports =  handlers;
