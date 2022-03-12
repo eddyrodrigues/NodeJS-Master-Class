@@ -40,33 +40,29 @@ handlers._users.get = (data, callback) => {
   const { guid } = data.queryObject;
   userId = typeof (guid) !== 'undefined' ? guid : null;
 
-  if (userId !== null) {
-    tokenProvided = typeof(data.headers.token) === 'undefined' ? null : data.headers.token;
-    if (tokenProvided) {
-      handlers._tokens.verify(tokenProvided, guid, (err) => {
-        console.log(err);
-        if (err) {
-          _data.read('users', userId, (err, data) => {
-            if (!err) {
-              if (data){
-                callback(200, data);
-              } else {
-                callback(204, {});
-              }
+  tokenProvided = typeof(data.headers.token) === 'undefined' ? null : data.headers.token;
+  if (tokenProvided) {
+    _data.read('tokens', tokenProvided, (err, tokenData) => {
+      if (!err && tokenData){
+        _data.read('users', tokenData.guid, (err, userData) => {
+          if (!err && userData) {
+            if (data){
+              callback(200, userData);
             } else {
               callback(204, {});
             }
-          }); 
-        } else {
-          callback(401, {message: "this token is not valid or has been expired"});
-        }
-      });
-    } else {
-      callback(404, {message: "token not provided"});
-    }
-  }else{
-    callback(204, {});
+          } else {
+            callback(204, {});
+          }
+        });
+      } else {
+        callback(400, {message: "provided token is not valid"})
+      }
+    })
+  } else {
+    callback(404, {message: "token not provided"});
   }
+
 
 };
 
@@ -119,27 +115,21 @@ handlers._users.put = (data, callback) => {
   let payload = helpers.parseJsonObjectReturn(data.payload);
 
   let token = typeof(headers.token) === 'undefined' ? null : headers.token;
-  let guid = typeof(payload.GUID) === 'undefined' ? null : payload.GUID;
   let phone = typeof(payload.phone) === 'undefined' ? null : payload.phone;
   let name = typeof(payload.name) === 'undefined' ? null : payload.name;
   let surname = typeof(payload.surname) === 'undefined' ? null : payload.surname;
   let age = typeof(payload.age) === 'undefined' ? null : payload.age;
   
   if (token) {
-    handlers._tokens.verify(token, guid, (Noterr) => {
-      if (Noterr) {
-
-        _data.read('users', guid, (err, data) => {
-          if (!err){
-            
-            userData = data;
-            
+    _data.read('tokens', token, (err, tokenData) => {
+      if(!err && tokenData){
+        _data.read('users', tokenData.guid, (err, userData) => {
+          if (!err && userData){
             userData.name    = userData.name != name ? name : userData.name;
             userData.phone   = userData.phone != phone ? phone : userData.phone;
             userData.surname = userData.surname != surname? surname : userData.surname;
             userData.age     = userData.age != age ? age : userData.age;
-
-            _data.update('users', guid, userData, (err, data) => {
+            _data.update('users', tokenData.guid, userData, (err, data) => {
               if (!err) {
                 callback(200, userData);
               } else {
@@ -149,11 +139,9 @@ handlers._users.put = (data, callback) => {
           } else {
             callback(500, {message: "It was not possible to read the user info"});
           }
-        
-        
         });
       } else {
-        callback(401, {message: "token is invalid"});
+        callback(401, {});
       }
     });
   } else {
@@ -181,7 +169,6 @@ handlers._tokens.get = (data, callback) =>{
   id = typeof(id) === 'string' && id.length === 20 ? id : false;
   if(id){
     _data.read('tokens', id, (err, tokenInfo) => {
-      tokenInfo = helpers.parseJsonObjectReturn(tokenInfo);
       if (!err && tokenInfo){
         callback(200, tokenInfo);
       }else{
@@ -196,20 +183,20 @@ handlers._tokens.get = (data, callback) =>{
 
 handlers._tokens.post = (data, callback) =>{
  
-  let { phone, guid } = (helpers.parseJsonObjectReturn(data.payload));
-  phone = typeof(phone) === 'undefined' ? null : phone;
+  let { password, guid } = (helpers.parseJsonObjectReturn(data.payload));
+  password = typeof(password) === 'undefined' ? null : password;
   guid = typeof(guid) === 'undefined' ? null : guid;
 
   // console.log(data);
-  if (phone && guid){
+  if (password && guid){
     // lookup the user who matchs phone number
     _data.read('users', guid,  (err, userData) => {
       if (!err && userData){
-        if (userData.phone === phone){
+        if (userData.password === password){
           let random_token = helpers.createRandomString(20);
           let expiresIn = Date.now() + 1000 *60 * 60;
           let tokenObject = {
-            "phone"   : phone,
+            "guid"   : userData.GUID,
             "id"      : random_token,
             "expires" : expiresIn
           };
@@ -298,13 +285,12 @@ handlers._tokens.verify = (tokenId, guid, callback) =>{
   
   if (token){
     console.log('aaa');
-    _data.read('tokens', token, (err, data) => {
+    _data.read('tokens', token, (err, tokenData) => {
       if (!err) {
-        if (data.expires > Date.now()){
-          _data.read('users', GUID, (err, data) => {
-            if (!err) {
-              console.log
-              if (data.GUID == GUID){
+        if (tokenData.expires > Date.now()){
+          _data.read('users', tokenData.guid, (err, userData) => {
+            if (!err && userData) {
+              if (tokenData.guid == userData.GUID){
                 callback(true);
               } else {
                 callback(false);
