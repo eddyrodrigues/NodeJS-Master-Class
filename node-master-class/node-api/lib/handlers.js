@@ -83,30 +83,34 @@ handlers._users.post = (data, callback) => {
   let name = typeof (pl.name) === 'string' && pl.name.length > 0 ? pl.name : '';
   let surname = typeof (pl.surname) === 'string' && pl.surname.length > 0 ? pl.surname : '';
   let age = (typeof (pl.age) === 'string' && pl.age.length > 0) || typeof (pl.age) === 'number' ? pl.age : 0;
+  let password = typeof (pl.password) === 'string' && pl.password.length > 0 ? pl.password : '';
   let guidUser = helpers.createUniqueId();
 
-  if (phonenumber === '' || name === '' || surname === '' || age === 0) {
+
+  if (phonenumber === '' || name === '' || surname === '' || age === 0 || password == '') {
     return callback(400, {
-      message: "object string is not in the right format"
+      message: "object string is not in the right format or missing some required field"
+    });
+  } else {
+    let userData = {
+      "name": name,
+      "surname": surname,
+      "phone": phonenumber,
+      "age": age,
+      "password": password,
+      "guid": guidUser
+    };
+  
+    //  TODO: { Adjust this to continue and post the object to a file }
+    _data.create('users', guidUser, userData, (err, data) => {
+      if (!err) {
+        return callback(200, userData);
+      } else {
+        return callback(204, {});
+      }
     });
   }
 
-  let userData = {
-    "name": name,
-    "surname": surname,
-    "phone": phonenumber,
-    "age": age,
-    "GUID": guidUser
-  };
-
-  //  TODO: { Adjust this to continue and post the object to a file }
-  _data.create('users', guidUser, userData, (err, data) => {
-    if (!err) {
-      return callback(200, userData);
-    } else {
-      return callback(204, {});
-    }
-  });
 
 };
 
@@ -119,27 +123,35 @@ handlers._users.put = (data, callback) => {
   let name = typeof(payload.name) === 'undefined' ? null : payload.name;
   let surname = typeof(payload.surname) === 'undefined' ? null : payload.surname;
   let age = typeof(payload.age) === 'undefined' ? null : payload.age;
-  
+  let password = typeof(payload.password) === 'undefined' ? null : payload.password;
+
+
   if (token) {
     _data.read('tokens', token, (err, tokenData) => {
       if(!err && tokenData){
-        _data.read('users', tokenData.guid, (err, userData) => {
-          if (!err && userData){
-            userData.name    = userData.name != name ? name : userData.name;
-            userData.phone   = userData.phone != phone ? phone : userData.phone;
-            userData.surname = userData.surname != surname? surname : userData.surname;
-            userData.age     = userData.age != age ? age : userData.age;
-            _data.update('users', tokenData.guid, userData, (err, data) => {
-              if (!err) {
-                callback(200, userData);
-              } else {
-                callback(500, {message: err});
-              }
-            });
-          } else {
-            callback(500, {message: "It was not possible to read the user info"});
-          }
-        });
+        if (tokenData.expires > Date.now()) {
+          _data.read('users', tokenData.guid, (err, userData) => {
+            if (!err && userData){
+              userData.name    = userData.name != name ? name : userData.name;
+              userData.phone   = userData.phone != phone ? phone : userData.phone;
+              userData.surname = userData.surname != surname? surname : userData.surname;
+              userData.age     = userData.age != age ? age : userData.age;
+              userData.password = userData.password != password ? password : userData.password;
+  
+              _data.update('users', tokenData.guid, userData, (err, data) => {
+                if (!err) {
+                  callback(200, userData);
+                } else {
+                  callback(500, {message: err});
+                }
+              });
+            } else {
+              callback(500, {message: "It was not possible to read the user info"});
+            }
+          });
+        } else {
+          callback(401, {message: "token already expired"})
+        }
       } else {
         callback(401, {});
       }
@@ -172,7 +184,7 @@ handlers._tokens.get = (data, callback) =>{
       if (!err && tokenInfo){
         callback(200, tokenInfo);
       }else{
-        callback(400, {message: "Id dont exists or is invalid."})
+        callback(401, {message: "Id dont exists or is invalid."})
       }
     })
   }else{
@@ -196,7 +208,7 @@ handlers._tokens.post = (data, callback) =>{
           let random_token = helpers.createRandomString(20);
           let expiresIn = Date.now() + 1000 *60 * 60;
           let tokenObject = {
-            "guid"   : userData.GUID,
+            "guid"   : userData.guid,
             "id"      : random_token,
             "expires" : expiresIn
           };
@@ -210,14 +222,14 @@ handlers._tokens.post = (data, callback) =>{
             }
           })
         }else{
-          callback(400, {message: "Error: Password did not match the specified users guid."})
+          callback(401, {message: "Error: Password did not match the specified users guid."})
         }
       }else{
-        callback(400, {message: "could not find the user specified"});
+        callback(401, {message: "could not find the user specified"});
       }
     })
   }else{
-    callback(400, {message: "error: missing fields"});
+    callback(404, {message: "error: missing fields"});
   }
   
 };
@@ -229,7 +241,6 @@ handlers._tokens.delete = (data, callback) =>{
   if (id){
     _data.read('tokens', id, (err, tokenData) => {
       if (!err && tokenData){
-        tokenData = helpers.parseJsonObjectReturn(tokenData);
         if ( tokenData ){
           _data.delete('tokens', id, (err) => {
             if (!err){
@@ -256,7 +267,6 @@ handlers._tokens.put = (data, callback) =>{
   if (id && extend){
     _data.read('tokens', id, (err, tokenData) => {
       if (!err && tokenData){
-        tokenData = helpers.parseJsonObjectReturn(tokenData);
         if (tokenData.expires > Date.now() ){
           tokenData.expires = Date.now() + 1000 * 60 * 60;
           _data.update('tokens', id, tokenData, (err) => {
@@ -278,10 +288,9 @@ handlers._tokens.put = (data, callback) =>{
 
 handlers._tokens.verify = (tokenId, guid, callback) =>{
 
-  let token = tokenId;
-  let GUID = guid;
-  GUID = typeof(guid) === 'undefined' ? false : GUID;
-  token = typeof(token) === 'undefined' ? false : token;
+ 
+  let userguid = typeof(guid) === 'undefined' ? false : guid;
+  let token = typeof(tokenId) === 'undefined' ? false : tokenId;
   
   if (token){
     console.log('aaa');
@@ -290,7 +299,7 @@ handlers._tokens.verify = (tokenId, guid, callback) =>{
         if (tokenData.expires > Date.now()){
           _data.read('users', tokenData.guid, (err, userData) => {
             if (!err && userData) {
-              if (tokenData.guid == userData.GUID){
+              if (tokenData.guid == userData.guid){
                 callback(true);
               } else {
                 callback(false);
