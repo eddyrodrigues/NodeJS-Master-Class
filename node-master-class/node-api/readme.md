@@ -14,7 +14,7 @@
         enter: localhost:xxxx
         - username: b8dabd40-a24c-11ec-8bda-2ddb34e3a703
         - password: 123456
-       y'll be redirect to index page and I'll be able to see the information about name age
+       y'll be redirect to index page and y'll be able to see the information about name age
        name and surname
        
        
