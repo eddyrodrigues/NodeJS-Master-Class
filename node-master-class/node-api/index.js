@@ -2,9 +2,8 @@ const http = require('http');
 const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
 const handlers = require('./lib/handlers');
-const helpers = require('./lib/helpers');
 
-
+_myport = 3001;
 
 const server = http.createServer((req, res)=>{
     // parsing url
@@ -45,38 +44,77 @@ const server = http.createServer((req, res)=>{
 
 
         
+        
         // route selecting, if exists, the routed wich you be called (not found as default one)
-        const route = typeof(router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
+        // let route = typeof(router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
+        let route = '';
+        if (trimmedPath.indexOf('public/') > - 1) {
+          route = router['public'];
+        } else {
+          route = typeof(router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
+        }
+        
+        
 
         // calling the route
-        route(data, (statusCode, payload) => {
+        route(data, (statusCode, payload, contentType) => {
             // res.writeHead(statusCode);
+            console.log(new Date().toISOString(), _myport);
+            contentType = typeof(contentType) == 'string' && contentType.length > 0 ? contentType : 'json';
             res.statusCode = statusCode;
-            res.setHeader("Content-Type", "application/json");
-            res.writeHead(statusCode, {
-                'Content-type': 'application/json',
-                //'enconding': 'utf-8',
-            });
-            payload = JSON.stringify(payload);
-            
+            if (contentType == 'json') {
+              payload = JSON.stringify(payload);
+              res.setHeader("Content-Type", 'application/json');
+            } else if (contentType == 'html') {
+              res.setHeader("Content-Type", "text/html");
+            } else if (contentType == 'js') {
+              res.setHeader("Content-Type", "text/plain");
+            } else if (contentType == 'png') {
+              res.setHeader("Content-Type", "application/png");
+            }else if (contentType == 'jpeg') {
+              res.setHeader("Content-Type", "image/jpeg");
+            }else if (contentType == 'jpg') {
+              res.setHeader("Content-Type", "file/jpeg");
+            }else if (contentType == 'json') {
+              res.setHeader("Content-Type", "file/json");
+            }else if (contentType == 'html') {
+              res.setHeader("Content-Type", "text/html");
+            } else if (contentType == 'css') {
+              res.setHeader('Content-Type', 'text/css');
+            }
+            // else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }else if (contentType == 'js') {
+            //   res.setHeader("Content-Type", "application/javascript");
+            // }
+
             res.end(payload);
         });
     });
 })
 
-server.listen(3000, ()=>{
-    console.log("listening on port 3000");
+server.listen(_myport, ()=>{
+    console.log("listening on port " + _myport);
 });
 
+
+
+
 const router = {
-    '/': handlers.root,
-    '': handlers.root,
-    'users': handlers.getAllUsers,
-    'user': handlers.users,
-    'create-user': handlers.postUser,
-    'tokens': handlers.tokens
+    '': handlers.index,
+    'login':handlers.login,
+    'logout': handlers.logout,
+    'my-profile': handlers.user_profile,
+    'api/user': handlers.users,
+    'api/create-user': handlers.postUser,
+    'api/tokens': handlers.tokens,
+    'public' : handlers.public
 };
-
-
-
-

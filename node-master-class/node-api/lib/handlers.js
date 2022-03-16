@@ -1,21 +1,164 @@
 const _data = require("./data.js");
 const helpers = require('./helpers');
-const uuid = require('uuid');
-const fs = require('fs');
 const path = require('path');
-const { resolve } = require("path");
-const { type } = require("os");
-const { exit } = require("process");
-const fsPromises = require('fs').promises;
-
 const handlers = {};
 
-handlers.root = (data, callback) => {
-  callback(200, {
-    index: 'my index page in json object'
-  });
+// HTML HANDLERS
+
+handlers.index = (data, callback) => {
+  if (data.method == 'get') {
+    let token = typeof(data.headers.token) == 'undefined' ? false : data.headers.token;
+    if (!token) {
+      token = typeof(data.queryObject.token) == 'undefined' ? '' : data.queryObject.token;
+    }
+    if (token.length > 0){
+      _data.read('tokens', token, (err, tokenData) => {
+        if (!err && tokenData){
+          if (tokenData.expires > Date.now()){
+            helpers.getTemplate('painel/index', '', (err, data) => {
+              if (!err && data){
+                callback(200, data, 'html');
+              } else {
+                callback(500, "not found the template", 'html');
+              }
+            }); 
+          }else {
+            helpers.getTemplate('painel/pages-login', '', (err, data) => {
+              if (!err && data){
+                callback(200, data, 'html');
+              } else {
+                callback(500, "not found the template", 'html');
+              }
+            });    
+          }
+        } else {
+          helpers.getTemplate('painel/pages-login', '', (err, data) => {
+            if (!err && data){
+              callback(200, data, 'html');
+            } else {
+              callback(500, "not found the template", 'html');
+            }
+          });  
+        }
+      });
+    } else {
+     helpers.getTemplate('painel/pages-login', '', (err, data) => {
+          if (!err && data){
+            callback(200, data, 'html');
+          } else {
+            callback(500, "not found the template", 'html');
+          }
+        }); 
+    }
+    
+  } else {
+    callback(405, '', 'html');
+  }
 };
 
+handlers.login = (data, callback) => {
+  if (data.method == 'get'){
+      helpers.getTemplate('painel/pages-login', '', (err, templateData)=>{
+        console.log(err, templateData)
+        if (!err && templateData) {
+          callback(200, templateData, 'html');
+        } else {
+          handlers.notFound(data, callback);
+        }
+      });
+    }
+};
+
+handlers.logout = (data, callback) => {
+  let token = typeof(data.headers.token) == 'undefined' ? false : data.headers.token;
+  if (!token) {
+    token = typeof(data.queryObject.token) == 'undefined' ? '' : data.queryObject.token;
+    if (token.length > 0) {
+      _data.delete('tokens', token, (err, ...rest) => {
+        if (!err) {
+          helpers.getTemplate('painel/pages-faq', '', (err, templateData) => {
+            if (!err && templateData) {
+              callback(200, templateData, 'html');
+            } else {
+              callback(404, 'not found', 'html');
+            }
+          });
+        } else {
+          callback(404, 'token already dot not exists', 'html')
+        }
+      });
+    } else {
+      callback(404, 'token not provided', 'html');
+    }
+  }
+};
+
+handlers.user_profile = (data, callback) => {
+  if (data.method == 'get') {
+    let token = typeof(data.headers.token) == 'undefined' ? false : data.headers.token;
+    if (!token) {
+      token = typeof(data.queryObject.token) == 'undefined' ? '' : data.queryObject.token;
+    }
+    if (token.length > 0){
+      _data.read('tokens', token, (err, tokenData) => {
+        if (!err && tokenData){
+          if (tokenData.expires > Date.now()){
+            helpers.getTemplate('painel/users-profile', '', (err, data) => {
+              if (!err && data){
+                callback(200, data, 'html');
+              } else {
+                callback(500, "not found the template", 'html');
+              }
+            }); 
+          }else {
+            helpers.getTemplate('painel/pages-login', '', (err, data) => {
+              if (!err && data){
+                callback(200, data, 'html');
+              } else {
+                callback(500, "not found the template", 'html');
+              }
+            });    
+          }
+        } else {
+          helpers.getTemplate('painel/pages-login', '', (err, data) => {
+            if (!err && data){
+              callback(200, data, 'html');
+            } else {
+              callback(500, "not found the template", 'html');
+            }
+          });  
+        }
+      });
+    } else {
+     helpers.getTemplate('painel/pages-login', '', (err, data) => {
+          if (!err && data){
+            callback(200, data, 'html');
+          } else {
+            callback(500, "not found the template", 'html');
+          }
+        }); 
+    }
+    
+  } else {
+    callback(405, '', 'html');
+  }
+}
+
+handlers.public = (data, callback) => {
+  if(data.method == 'get') {
+    const assetName = data.path.replace("public/", "").trim();
+    helpers.getStaticAsset(assetName, (err, data)=>{
+      if(!err && data){
+        fileExt = path.extname(assetName).replace('.', '');
+        callback(200, data, fileExt);
+      } else {
+        callback(404);
+      }
+    })
+  } else {
+    callback(405, '', 'html');    
+  }
+};
 
 handlers.notFound = (data, callback) => {
   callback(404, {
@@ -24,14 +167,16 @@ handlers.notFound = (data, callback) => {
 };
 
 
+/*
+ * JSON API HANDLERS
+*/
+
 handlers.users = (data, callback) => {
   let acceptedValues = ['post', 'get', 'delete', 'update', 'put'];
   if (acceptedValues.indexOf(data.method) > -1) {
     handlers._users[data.method](data, callback);
   }
 };
-
-
 
 handlers._users = {};
 
@@ -44,17 +189,21 @@ handlers._users.get = (data, callback) => {
   if (tokenProvided) {
     _data.read('tokens', tokenProvided, (err, tokenData) => {
       if (!err && tokenData){
-        _data.read('users', tokenData.guid, (err, userData) => {
-          if (!err && userData) {
-            if (data){
-              callback(200, userData);
+        if (tokenData.expires >= Date.now()){
+          _data.read('users', tokenData.guid, (err, userData) => {
+            if (!err && userData) {
+              if (data){
+                callback(200, userData);
+              } else {
+                callback(204, {});
+              }
             } else {
               callback(204, {});
             }
-          } else {
-            callback(204, {});
-          }
-        });
+          });
+        } else {
+          callback(401, {message: "token has been expired"});
+        }
       } else {
         callback(400, {message: "provided token is not valid"})
       }
@@ -79,14 +228,14 @@ handlers._users.post = (data, callback) => {
     }
   });
 
-  let phonenumber = (typeof (pl.phone) === 'string' && pl.phone.length > 0) || typeof (pl.age) === 'number' ? pl.phone : '';
+  let phonenumber = (typeof (pl.phone) === 'string' && pl.phone.length > 0) || typeof (pl.phone) === 'number' ? pl.phone : '';
   let name = typeof (pl.name) === 'string' && pl.name.length > 0 ? pl.name : '';
   let surname = typeof (pl.surname) === 'string' && pl.surname.length > 0 ? pl.surname : '';
   let age = (typeof (pl.age) === 'string' && pl.age.length > 0) || typeof (pl.age) === 'number' ? pl.age : 0;
   let password = typeof (pl.password) === 'string' && pl.password.length > 0 ? pl.password : '';
   let guidUser = helpers.createUniqueId();
 
-
+  console.log(pl);
   if (phonenumber === '' || name === '' || surname === '' || age === 0 || password == '') {
     return callback(400, {
       message: "object string is not in the right format or missing some required field"
@@ -230,8 +379,7 @@ handlers._tokens.post = (data, callback) =>{
     })
   }else{
     callback(404, {message: "error: missing fields"});
-  }
-  
+  }  
 };
 
 handlers._tokens.delete = (data, callback) =>{
@@ -255,7 +403,9 @@ handlers._tokens.delete = (data, callback) =>{
       }
     })
   } else {
-    callback(400, {message: "the specified token does not exist"});
+    callback(400, {
+      message: "the specified token does not exist"
+    });
   }
 };
 
@@ -287,8 +437,6 @@ handlers._tokens.put = (data, callback) =>{
 };
 
 handlers._tokens.verify = (tokenId, guid, callback) =>{
-
- 
   let userguid = typeof(guid) === 'undefined' ? false : guid;
   let token = typeof(tokenId) === 'undefined' ? false : tokenId;
   
@@ -314,12 +462,10 @@ handlers._tokens.verify = (tokenId, guid, callback) =>{
       } else {
         callback(false);
       }
-    });
-    
+    });  
   } else {
     callback(false);
   }
-
 };
 
 module.exports = handlers;
